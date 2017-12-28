@@ -99,10 +99,10 @@ class wbrelation():
               self.fans_num = 0
               self.headers["User-Agent"] = (random.choice(USER_AGENTS))
               r = self.getrequest(url)
-        # r=requests.get(url,cookies=cookies,headers=self.headers).content
+              # r=requests.get(url,cookies=cookies,headers=self.headers).content
 
               data=r.json()
-          #print(data)
+              #print(data)
               try:
                  user1=data["data"]["cards"][0]
               except IndexError:
@@ -141,7 +141,7 @@ class wbrelation():
           self.fans_num = 0
           self.headers["User-Agent"] = (random.choice(USER_AGENTS))
           r = self.getrequest(url)
-        # r=requests.get(url,cookies=cookies,headers=self.headers).content
+          # r=requests.get(url,cookies=cookies,headers=self.headers).content
           doc_tree = etree.HTML(r.content)
           data=r.json()
           try:
