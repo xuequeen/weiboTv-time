@@ -4,12 +4,9 @@ from values import USER_AGENTS
 from lxml import etree
 cookies={}
 import json
-#https://m.weibo.cn/api/container/getIndex?type=uid&value=1259110474 个人信息
-#https://m.weibo.cn/api/container/getIndex?type=uid&value='+id+'&containerid='+get_containerid(url)+'&page='+str(i)  #微博个人首页
-#https://m.weibo.cn/api/container/getIndex?type=uid&value=1259110474&containerid=2302831259110474&page=1
-#https://m.weibo.cn/p/index?containerid=231051_-_fansrecomm_-_1259110474&luicode=10000011&lfid=1005051259110474
-#https://m.weibo.cn/api/container/getIndex?containerid=2304131259110474_-_WEIBO_SECOND_PROFILE_WEIBO&luicode=10000011&lfid=2302831259110474&page_type=03&page=1 #微博内容
 
+import xlrd
+import xlwt
 
 
 try:
@@ -21,6 +18,7 @@ for cookie in json.load(cookiefile)["cookies"]:
     cookies[cookie["name"]] = cookie["value"]
 cookiefile.close()
 class wbrelation():
+
 
     def getrequest(self,url):
         #使用随机的user-agent
@@ -42,148 +40,165 @@ class wbrelation():
             time.sleep(1)
             r = self.getrequest(url)
             return r
+    def getnum(self,user_id):
+        self.follows=[]
+        #self.follow_num=0
+        self.headers={"User-Agent":""}
+        self.follow_num=0
+        self.fans_num=0
+        self.headers["User-Agent"] = (random.choice(USER_AGENTS))
 
-    def get_containerid(self,url):
+        url="https://weibo.cn/%s"%(user_id)
+        #print (url)
+        r=self.getrequest(url)
+        #r=requests.get(url,cookies=cookies,headers=self.headers).content
+        doc_tree = etree.HTML(r.content)
+        follownum=doc_tree.xpath("//*[@class='tip2']/a[1]/text()")
+        self.follow_num=re.findall("\d+",str(follownum))[0]
+
+        fansnum = doc_tree.xpath("//*[@class='tip2']/a[2]/text()")
+        self.fans_num = re.findall("\d+", str(fansnum))[0]
+
+        print("关注数：" +self.follow_num)
+        print("粉丝数: " +self.fans_num)
+
+
+
+    def getfollow(self,user_id):
+        self.follow=[]
         self.headers = {"User-Agent": ""}
         self.headers["User-Agent"] = (random.choice(USER_AGENTS))
-        nowuser = '5019697368'
-        url="https://m.weibo.cn/api/container/getIndex?type=uid&value=%s" %(nowuser)
+        url = "https://weibo.cn/%s/follow"%(user_id)
         r = self.getrequest(url)
-        content = json.loads(r)
-        for data in content.get('tabsInfo').get('tabs'):
-            if (data.get('tab_type') == 'weibo'):
-                containerid = data.get('containerid')
-                print(containerid)
-        return containerid
+        #r = requests.get(url, cookies=cookies, headers=self.headers).content
+        #print(r)
+        doc_tree = etree.HTML(r.content)
 
-    def getuser(self,nowuser):
-        self.guanzhu=0
-        self.fensi=0
-        self.headers = {"User-Agent": ""}
-
-        self.headers["User-Agent"] = (random.choice(USER_AGENTS))
-        #nowuser = '1259110474'
-        url = 'https://m.weibo.cn/api/container/getIndex?type=uid&value=%s'%(nowuser)
-        print(url)
-        r = self.getrequest(url)
-
-        data = r.json()
-        self.guanzhu = data["data"]["userInfo"]["follow_count"]
-        self.fensi= data["data"]["userInfo"]["followers_count"]
-        print(self.guanzhu)
-        print(self.fensi)
-        #description = content.get('userInfo').get('description')
-        #profile_url = content.get('userInfo').get('profile_url')
-        #self.guanzhu = user1['follow_count']     #关注数
-        #self.name = content.get('userInfo').get('screen_name')          #昵称
-        #self.fensi = user1['followers_count']    #粉丝数
-        #gender = content.get('userInfo').get('gender')
-        #urank = content.get('userInfo').get('urank')
-
-
-
-    def getfollow(self,nowuser):
-        self.followuser_id=[]
-        num = int(self.guanzhu/20)
-        if num==0:
-            num=1
-        if num>10:
-            num=10
-        for page in range(1,num+1):
-          #nowuser='1259110474'
-          try:
-              url="https://m.weibo.cn/api/container/getIndex?containerid=231051_-_followers_-_%s&luicode=10000011&lfid=1005051259110474&page=%d"%(nowuser,page)
-              self.headers = {"User-Agent": ""}
-              self.follow_num = 0
-              self.fans_num = 0
-              self.headers["User-Agent"] = (random.choice(USER_AGENTS))
+        page_num=doc_tree.xpath(".//div[@id='pagelist']/form/div/input[1]/@value")
+        if (len(page_num)!=0):
+           page=int(page_num[0])
+           for i in range(1,page+1):
+              url = 'https://weibo.cn/%s/follow?page=%d' % (user_id,i)
+              #print(url)
               r = self.getrequest(url)
-              # r=requests.get(url,cookies=cookies,headers=self.headers).content
-              try:
-                 data=r.json()
-              except json.decoder.JSONDecodeError:
-                  break
-              #print(data)
-              try:
-                 user1=data["data"]["cards"][0]
-              except IndexError:
-                continue
-              for i in range (0,20):
-               try:
-                 userid=user1["card_group"][i]
-                 userii=userid["user"]
-                 user_id=userii["id"]
-                 hh=len(str(user_id))
-                 if(int(hh>10)):
-                     i=i+1
-                 else:
-                   user_name=userii["screen_name"]
-                   self.followuser_id.append(str(user_id))
-                   #users_id=user_id.strip()
-                   print(str(user_id)+ ' : '+user_name)
-                #print(user_name)
-               except IndexError:
-                   continue
-          except KeyError:
-              continue
-        print(self.followuser_id)
-    def getfans(self,nowuser):
-        self.fansuser_id=[]
-        num=int(self.fensi/20)
-        if num==0:
-            num=1
-        if num>250:
-            num=250
-        for page in range(1,num+1):
-          #nowuser='1259110474'
-          url="https://m.weibo.cn/api/container/getIndex?containerid=231051_-_fans_-_%s&type=all&since_id=%d"%(nowuser,page)
-          self.headers = {"User-Agent": ""}
-          self.follow_num = 0
-          self.fans_num = 0
-          self.headers["User-Agent"] = (random.choice(USER_AGENTS))
-          r = self.getrequest(url)
-          try:
-              data = r.json()
-          except json.decoder.JSONDecodeError:
-              break
-          try:
-            user1=data["data"]["cards"][0]
-          except IndexError:
-              continue
-          except KeyError:
-              continue
-          for i in range (0,20):
-            try:
-                userid=user1["card_group"][i]
-                userii=userid["user"]
-                user_id=userii["id"]
-                user_name=userii["screen_name"]
-                self.fansuser_id.append(str(user_id))
-                print(str(user_id) + ' : '+user_name)
-                #print(user_name)
-            except IndexError:
-                  continue
-        print(self.fansuser_id)
+              #r = requests.get(url, cookies=cookies, headers=self.headers).content
+              # print(r)
+              doc_tree = etree.HTML(r.content)
+
+              cmt = doc_tree.xpath('.//td[@valign="top"]/a[2]/@href')
+             #print(cmt)
+
+              for c in cmt:
+                  follow_uid = re.findall('\d{10}', str(c))
+                  if follow_uid:
+                      fans_id = follow_uid[0]
+                      self.follow.append(fans_id)
+           print(self.follow)
+        else:
+            url = 'https://weibo.cn/%s/follow?page=1' % (user_id)
+            #print(url)
+            #r = requests.get(url, cookies=cookies, headers=self.headers).content
+            # print(r)
+            r=self.getrequest(url)
+            doc_tree = etree.HTML(r.content)
 
 
-    def updatedb(self,nowuser):
-        #nowuser='1259110474'
-        client = pymongo.MongoClient('127.0.0.1:27017')
-        db = client['WeiboTV']
-        db['Relation'].insert(
-            {"source_id":nowuser,
-             "follow":self.followuser_id,
-             "fans":self.fansuser_id
-             }
-        )
+            cmt = doc_tree.xpath('.//td[@valign="top"]/a[2]/@href')
+            # print(cmt)
+
+            for c in cmt:
+                follow_uid = re.findall('\d{10}', str(c))
+                if follow_uid:
+                    fans_id = follow_uid[0]
+                    self.follow.append(fans_id)
+            print(self.follow)
+
+    def getfans(self,user_id):
+        self.fans=[]
+        self.headers = {"User-Agent": ""}
+        self.headers["User-Agent"] = (random.choice(USER_AGENTS))
+        url = "https://weibo.cn/%s/fans"%(user_id)
+        #print(url)
+        r = self.getrequest(url)
+        #r = requests.get(url, cookies=cookies, headers=self.headers).content
+        #print(r)
+        doc_tree = etree.HTML(r.content)
+
+        page_num=doc_tree.xpath(".//div[@id='pagelist']/form/div/input[1]/@value")
+        if len(page_num)!=0:
+          page=int(page_num[0])
+          for i in range(1,page+1):
+              url = 'https://weibo.cn/%s/fans?page=%d' % (user_id,i)
+              #print(url)
+              r = self.getrequest(url)
+              #r = requests.get(url, cookies=cookies, headers=self.headers).content
+              doc_tree = etree.HTML(r.content)
+
+              cmt = doc_tree.xpath('//*[@valign="top"]/a[2]/@href')
+             #print(cmt)
+
+              for c in cmt:
+                  fans_uid= re.findall('\d{10}', str(c))
+                  if fans_uid:
+                    fans_id=fans_uid[0]
+                    self.fans.append(fans_id)
+          print(self.fans)
+        else:
+            url = 'https://weibo.cn/%s/fans?page=1' % (user_id)
+            #print(url)
+            r = self.getrequest(url)
+            #r = requests.get(url, cookies=cookies, headers=self.headers).content
+            doc_tree = etree.HTML(r.content)
+
+            cmt = doc_tree.xpath('//*[@valign="top"]/a[2]/@href')
+
+            for c in cmt:
+
+                fans_uid = re.findall('\d{10}', str(c))
+                if fans_uid:
+                    fans_id = fans_uid[0]
+                    self.fans.append(fans_id)
+            # print(cmt)
+            print(self.fans)
+    def updatetxt(self):
+        myfile = open('relation.txt', 'a')
+        myfile.write('\n' + user_id + '\n' + 'follow' + ' ')
+        for line in self.follow:
+            myfile.write(line + ' ')
+        myfile = open('relation.txt', 'a')
+        myfile.write('\n' + 'fans' + ' ')
+
+        for line in self.fans:
+            myfile.write(line + ' ')
+    def updatedb(self):
+
+            client = pymongo.MongoClient('127.0.0.1:27017')
+            db = client['WeiboTV']
+            db['Relation'].insert(
+                {"author": self.author,
+                 "content": self.content,
+                 "id": self.id,
+                 "url": re.findall('[A-Za-z0-9]{9}', self.url)[0],
+                 "comments_num": self.comments_num,
+                 "likes_num": self.likes_num,
+                 "forwards_num": self.forwards_num,
+                 "comments": self.comments,
+                 "forwards": self.forwards,
+                 }
+            )
 run=wbrelation()
 with open('userid.txt', 'r') as f0:
     lines = f0.readlines()
     for line in lines:
 
-        nowuser = line.strip()
-        run.getuser(nowuser)
-        run.getfollow(nowuser)
-        run.getfans(nowuser)
-        run.updatedb(nowuser)
+        user_id = line.strip()
+        run.getnum(user_id)
+        run.getfollow(user_id)
+        run.getfans(user_id)
+        run.updatetxt()
+
+
+
+
+
 
